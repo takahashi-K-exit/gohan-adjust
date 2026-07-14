@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>集計結果 - ご飯会 日程調整</title>
+  <style>
+    body {
+      font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+      margin: 0 auto;
+      max-width: 600px;
+      padding: 20px;
+      background-color: #f9f9f9;
+      color: #333;
+    }
+    h1 {
+      text-align: center;
+      font-size: 1.5rem;
+      color: #444;
+      margin-bottom: 20px;
+    }
+    .month-selector-container {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .month-input {
+      font-size: 1.2rem;
+      padding: 8px 15px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      outline: none;
+      cursor: pointer;
+    }
+    .table-container {
+      width: 100%;
+      overflow-x: auto; /* 人数が増えたら横スクロールできるようにする */
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+      padding: 10px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 300px;
+    }
+    th, td {
+      border: 1px solid #eee;
+      padding: 12px 8px;
+      text-align: center;
+      white-space: nowrap;
+    }
+    th {
+      background-color: #f0f8ff;
+      font-weight: bold;
+    }
+    /* リンク用ボタン */
+    .back-link {
+      display: block;
+      text-align: center;
+      margin-top: 20px;
+      color: #007BFF;
+      text-decoration: none;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>みんなの回答状況</h1>
+
+  <div class="month-selector-container">
+    <input type="month" id="month-select" class="month-input">
+  </div>
+
+  <div class="table-container" id="table-container">
+    <p style="text-align: center;">データを読み込み中...</p>
+  </div>
+
+  <a href="index.html" class="back-link">← 入力画面に戻る</a>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD2saweTXZ7Qxc8n3pBNueS15z-EJWiCv8",
+      authDomain: "gohan-adjust-62272.firebaseapp.com",
+      projectId: "gohan-adjust-62272",
+      storageBucket: "gohan-adjust-62272.firebasestorage.app",
+      messagingSenderId: "1027529556388",
+      appId: "1:1027529556388:web:5f2d239bb1c9ea1ed1c131"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const dayOfWeekStr = ["日", "月", "火", "水", "木", "金", "土"];
+
+    // データベースから情報を取ってきて表を作る関数
+    async function loadResults() {
+      const monthInput = document.getElementById('month-select').value;
+      if (!monthInput) return;
+
+      const container = document.getElementById('table-container');
+      container.innerHTML = "<p style='text-align: center;'>データを読み込み中...</p>";
+
+      try {
+        // 選んだ月のデータだけをFirebaseから探してくる
+        const q = query(collection(db, "responses"), where("targetMonth", "==", monthInput));
+        const querySnapshot = await getDocs(q);
+
+        const users = [];
+        const userAnswers = {};
+
+        // 取得したデータを整理する
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          users.push(data.userName);
+          userAnswers[data.userName] = data.answers;
+        });
+
+        // 誰も回答していない場合
+        if (users.length === 0) {
+          container.innerHTML = "<p style='text-align: center; color: #666;'>まだこの月の回答はありません。</p>";
+          return;
+        }
+
+        const [year, month] = monthInput.split('-');
+        const y = parseInt(year);
+        const m = parseInt(month);
+        const lastDay = new Date(y, m, 0).getDate();
+
+        // 表のHTMLを組み立てる
+        let html = '<table><thead><tr><th>日付</th>';
+        users.forEach(user => {
+          html += `<th>${user}</th>`;
+        });
+        html += '</tr></thead><tbody>';
+
+        const markMap = { 'ok': '◯', 'maybe': '△', 'ng': '×', 'none': 'ー' };
+        const colorMap = { 'ok': '#4CAF50', 'maybe': '#F57F17', 'ng': '#F44336', 'none': '#ccc' };
+
+        for (let i = 1; i <= lastDay; i++) {
+          const dateObj = new Date(y, m - 1, i);
+          const dowStr = dayOfWeekStr[dateObj.getDay()];
+          const dateKey = `${m}月${i}日 (${dowStr})`;
+
+          let dateStyle = "";
+          if (dowStr === '土') dateStyle = 'color: #0066cc; font-weight: bold;';
+          if (dowStr === '日') dateStyle = 'color: #cc0000; font-weight: bold;';
+
+          html += `<tr><td style="${dateStyle}">${dateKey}</td>`;
+
+          users.forEach(user => {
+            const ans = userAnswers[user][dateKey] || 'none';
+            const mark = markMap[ans];
+            const color = colorMap[ans];
+            html += `<td style="color: ${color}; font-weight: bold; font-size: 1.2rem;">${mark}</td>`;
+          });
+
+          html += '</tr>';
+        }
+        html += '</tbody></table>';
+        container.innerHTML = html;
+
+      } catch (error) {
+        console.error("エラーが発生しました:", error);
+        container.innerHTML = "<p style='text-align: center; color: red;'>データの読み込みに失敗しました。</p>";
+      }
+    }
+
+    // 画面の読み込みが終わった瞬間に実行
+    window.onload = function() {
+      const monthInput = document.getElementById('month-select');
+      const today = new Date();
+      let y = today.getFullYear();
+      let m = today.getMonth() + 2; 
+      if (m > 12) {
+        m -= 12;
+        y++;
+      }
+      
+      monthInput.value = `${y}-${m.toString().padStart(2, '0')}`;
+      loadResults(); // 表を作成
+
+      // 月が変更されたら表を作り直す
+      monthInput.addEventListener('change', loadResults);
+    };
+  </script>
+</body>
+</html>
