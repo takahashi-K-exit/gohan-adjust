@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>月1ご飯会 日程調整</title>
+  <style>
+    body {
+      font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+      margin: 0 auto;
+      max-width: 500px;
+      padding: 20px;
+      background-color: #f9f9f9;
+      color: #333;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 1.5rem;
+      color: #444;
+      margin-bottom: 5px;
+    }
+
+    .description {
+      text-align: center;
+      font-size: 0.9rem;
+      color: #666;
+      margin-bottom: 25px;
+    }
+
+    /* 名前の入力エリア */
+    .name-input-container {
+      margin-bottom: 20px;
+    }
+    .name-input {
+      width: 100%;
+      padding: 15px;
+      font-size: 1.1rem;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      box-sizing: border-box;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .name-input:focus {
+      border-color: #007BFF;
+    }
+
+    /* 候補日のリスト部分 */
+    .date-list {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+      padding: 10px 20px;
+    }
+
+    .date-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 0;
+      border-bottom: 1px solid #eee;
+    }
+
+    .date-row:last-child {
+      border-bottom: none;
+    }
+
+    .date-text {
+      font-size: 1.1rem;
+      font-weight: bold;
+    }
+
+    /* ◯△×を切り替えるボタン */
+    .status-btn {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      border: none;
+      font-size: 1.5rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .status-none {
+      background-color: #e0e0e0;
+      color: transparent;
+    }
+    .status-ok {
+      background-color: #4CAF50;
+      color: white;
+    }
+    .status-maybe {
+      background-color: #FFEB3B;
+      color: #333;
+    }
+    .status-ng {
+      background-color: #F44336;
+      color: white;
+    }
+
+    .submit-btn {
+      display: block;
+      width: 100%;
+      padding: 15px;
+      margin-top: 30px;
+      background-color: #007BFF;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>今月のご飯会 調整</h1>
+  <p class="description">名前を入力して、◯・△・× を選んでね！</p>
+
+  <div class="name-input-container">
+    <input type="text" id="user-name" class="name-input" placeholder="あなたのお名前（例: たろう）">
+  </div>
+
+  <div class="date-list" id="date-list-container"></div>
+
+  <button class="submit-btn" onclick="submitAnswers()">回答を送信する（テスト）</button>
+
+  <script>
+    const candidateDates = [
+      "8月1日 (土)",
+      "8月2日 (日)",
+      "8月8日 (土)",
+      "8月9日 (日)"
+    ];
+
+    const answers = {};
+    candidateDates.forEach(date => {
+      answers[date] = 'none';
+    });
+
+    window.onload = function() {
+      const container = document.getElementById('date-list-container');
+
+      candidateDates.forEach(date => {
+        const row = document.createElement('div');
+        row.className = 'date-row';
+
+        const dateText = document.createElement('div');
+        dateText.className = 'date-text';
+        dateText.textContent = date;
+
+        const btn = document.createElement('button');
+        btn.className = 'status-btn status-none
