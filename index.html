@@ -28,7 +28,6 @@
       margin-bottom: 25px;
     }
 
-    /* 名前の入力エリア */
     .name-input-container {
       margin-bottom: 20px;
     }
@@ -46,7 +45,6 @@
       border-color: #007BFF;
     }
 
-    /* 候補日のリスト部分 */
     .date-list {
       background: #fff;
       border-radius: 12px;
@@ -71,7 +69,6 @@
       font-weight: bold;
     }
 
-    /* ◯△×を切り替えるボタン */
     .status-btn {
       width: 60px;
       height: 60px;
@@ -114,6 +111,10 @@
       font-weight: bold;
       cursor: pointer;
     }
+    .submit-btn:disabled {
+      background-color: #aaa;
+      cursor: not-allowed;
+    }
   </style>
 </head>
 <body>
@@ -127,9 +128,29 @@
 
   <div class="date-list" id="date-list-container"></div>
 
-  <button class="submit-btn" onclick="submitAnswers()">回答を送信する（テスト）</button>
+  <button class="submit-btn" id="submit-btn">回答を送信する</button>
 
-  <script>
+  <script type="module">
+    // Firebaseの必要な機能をインターネットからダウンロード
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    // ★★★【重要】ここにあなた自身のFirebaseの設定値を貼り付けてください ★★★
+    // Your web app's Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyD2saweTXZ7Qxc8n3pBNueS15z-EJWiCv8",
+      authDomain: "gohan-adjust-62272.firebaseapp.com",
+      projectId: "gohan-adjust-62272",
+      storageBucket: "gohan-adjust-62272.firebasestorage.app",
+      messagingSenderId: "1027529556388",
+      appId: "1:1027529556388:web:5f2d239bb1c9ea1ed1c131"
+    };
+
+    // Firebaseの初期化
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // 候補日リスト
     const candidateDates = [
       "8月1日 (土)",
       "8月2日 (日)",
@@ -142,16 +163,83 @@
       answers[date] = 'none';
     });
 
-    window.onload = function() {
-      const container = document.getElementById('date-list-container');
+    // 画面の初期表示
+    const container = document.getElementById('date-list-container');
+    candidateDates.forEach(date => {
+      const row = document.createElement('div');
+      row.className = 'date-row';
 
-      candidateDates.forEach(date => {
-        const row = document.createElement('div');
-        row.className = 'date-row';
+      const dateText = document.createElement('div');
+      dateText.className = 'date-text';
+      dateText.textContent = date;
 
-        const dateText = document.createElement('div');
-        dateText.className = 'date-text';
-        dateText.textContent = date;
+      const btn = document.createElement('button');
+      btn.className = 'status-btn status-none';
+      btn.textContent = 'ー';
+      
+      btn.onclick = function() {
+        if (answers[date] === 'none') {
+          answers[date] = 'ok';
+          btn.className = 'status-btn status-ok';
+          btn.textContent = '◯';
+        } else if (answers[date] === 'ok') {
+          answers[date] = 'maybe';
+          btn.className = 'status-btn status-maybe';
+          btn.textContent = '△';
+        } else if (answers[date] === 'maybe') {
+          answers[date] = 'ng';
+          btn.className = 'status-btn status-ng';
+          btn.textContent = '×';
+        } else if (answers[date] === 'ng') {
+          answers[date] = 'none';
+          btn.className = 'status-btn status-none';
+          btn.textContent = 'ー';
+        }
+      };
 
-        const btn = document.createElement('button');
-        btn.className = 'status-btn status-none
+      row.appendChild(dateText);
+      row.appendChild(btn);
+      container.appendChild(row);
+    });
+
+    // 送信ボタンが押されたときの処理
+    async function submitAnswers() {
+      const userName = document.getElementById('user-name').value.trim();
+      const submitBtn = document.getElementById('submit-btn');
+
+      if (userName === "") {
+        alert("お名前を入力してください！");
+        return;
+      }
+
+      // 二重送信を防ぐためにボタンを無効化
+      submitBtn.disabled = true;
+      submitBtn.textContent = "送信中...";
+
+      try {
+        // Firebaseの 'responses' という名前のコレクション（フォルダのようなもの）に保存
+        await addDoc(collection(db, "responses"), {
+          userName: userName,
+          answers: answers,
+          createdAt: serverTimestamp() // 送信日時をサーバー側で記録
+        });
+
+        alert("回答を送信しました！ありがとう！");
+        // 送信が終わったら入力欄をリセット
+        document.getElementById('user-name').value = "";
+      } catch (error) {
+        console.error("エラーが発生しました:", error);
+        alert("送信に失敗しました。もう一度試してください。");
+      } finally {
+        // ボタンを元に戻す
+        submitBtn.disabled = false;
+        submitBtn.textContent = "回答を送信する";
+      }
+    }
+
+    // ボタンにクリックイベントを設定
+    document.getElementById('submit-btn').addEventListener('click', submitAnswers);
+  </script>
+
+</body>
+</html>
